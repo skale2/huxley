@@ -12,55 +12,55 @@ from huxley.core.models import Conference, School
 
 
 class Register(generics.GenericAPIView):
-	authentication_classes = (SessionAuthentication, )
-	serializer_classes = {
-		'user': CreateUserSerializer,
-		'registration': RegistrationSerializer
-	}
+    authentication_classes = (SessionAuthentication, )
+    serializer_classes = {
+        'user': CreateUserSerializer,
+        'registration': RegistrationSerializer
+    }
 
-	def post(self, request, *args, **kwargs):
-		return self.create(request, *args, **kwargs)
+    def post(self, request, *args, **kwargs):
+        return self.create(request, *args, **kwargs)
 
-	def create(self, request, *args, **kwargs):
-		if Conference.get_current().open_reg:
-			return self.register(request, *args, **kwargs)
-		raise PermissionDenied('Conference registration is closed.')
+    def create(self, request, *args, **kwargs):
+        if Conference.get_current().open_reg:
+            return self.register(request, *args, **kwargs)
+        raise PermissionDenied('Conference registration is closed.')
 
-	def register(self, request, *args, **kwargs):
-		print(request.data['user'])
-		user_data = request.data['user']
-		registration_data = request.data['registration']
+    def register(self, request, *args, **kwargs):
+        print(request.data['user'])
+        user_data = request.data['user']
+        registration_data = request.data['registration']
 
-		with transaction.atomic():
-			user_serializer = self.serializer_classes['user'](data=user_data)
-			user_is_valid = user_serializer.is_valid()
-			if not user_is_valid:
-				registration_serializer = self.serializer_classes[
-					'registration'](data=registration_data)
-				registration_serializer.is_valid()
-				errors = registration_serializer.errors
-				errors.update(user_serializer.errors)
-				self.replace_null_errors(errors)
+        with transaction.atomic():
+            user_serializer = self.serializer_classes['user'](data=user_data)
+            user_is_valid = user_serializer.is_valid()
+            if not user_is_valid:
+                registration_serializer = self.serializer_classes[
+                    'registration'](data=registration_data)
+                registration_serializer.is_valid()
+                errors = registration_serializer.errors
+                errors.update(user_serializer.errors)
+                self.replace_null_errors(errors)
 
-				return response.Response(
-					errors, status=status.HTTP_400_BAD_REQUEST)
+                return response.Response(
+                    errors, status=status.HTTP_400_BAD_REQUEST)
 
-			user_serializer.save()
-			school_id = user_serializer.data['school']['id']
-			registration_data['school'] = school_id
-			registration_serializer = self.serializer_classes['registration'](
-				data=registration_data)
-			registration_serializer.is_valid(raise_exception=True)
-			registration_serializer.save()
+            user_serializer.save()
+            school_id = user_serializer.data['school']['id']
+            registration_data['school'] = school_id
+            registration_serializer = self.serializer_classes['registration'](
+                data=registration_data)
+            registration_serializer.is_valid(raise_exception=True)
+            registration_serializer.save()
 
-		data = {'user': user_serializer.data,
-				'registration': registration_serializer.data}
-		return response.Response(data, status=status.HTTP_200_OK)
+        data = {'user': user_serializer.data,
+                'registration': registration_serializer.data}
+        return response.Response(data, status=status.HTTP_200_OK)
 
-	def replace_null_errors(self, errors):
-		for key in errors.keys():
-			for index, error in enumerate(errors[key]):
-				if error == 'This field may not be null.':
-					errors[key][index] = 'This field may not be blank.'
+    def replace_null_errors(self, errors):
+        for key in errors.keys():
+            for index, error in enumerate(errors[key]):
+                if error == 'This field may not be null.':
+                    errors[key][index] = 'This field may not be blank.'
 
 

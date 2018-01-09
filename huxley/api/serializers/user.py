@@ -63,13 +63,6 @@ class CreateUserSerializer(ModelSerializer):
 			'user_type': {'read_only': True}
 		}
 
-	def to_internal_value(self, data):
-		result = super(CreateUserSerializer, self).to_internal_value(data)
-		print("\n\n\n\n\n")
-		if result.get('fieldname', None) is None:
-			result['fieldname'] = ""
-		return result
-
 	def create(self, validated_data):
 		original_validated_data = validated_data.copy()
 
@@ -107,9 +100,6 @@ class CreateUserSerializer(ModelSerializer):
 
 	def validate_password(self, value):
 		password = value
-
-		if not password:
-			raise ValidationError("This field may not be blank.")
 
 		match = re.match("^[A-Za-z0-9\_\.!@#\$%\^&\*\(\)~\-=\+`\?]+$",
 						 password)
