@@ -46,4 +46,4 @@ def phone_domestic(value):
 def nonempty(value):
     '''Requires that a field be non-empty.'''
     if not value:
-        raise ValidationError('This field is required.')
+        raise ValidationError('This field may not be blank.')

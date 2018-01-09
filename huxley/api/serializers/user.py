@@ -17,106 +17,116 @@ from huxley.api.serializers.school import SchoolSerializer
 
 
 class UserSerializer(ModelSerializer):
-    delegate = DelegateNestedSerializer(required=False)
-    school = SchoolSerializer(required=False)
+	delegate = DelegateNestedSerializer(required=False)
+	school = SchoolSerializer(required=False)
 
-    class Meta:
-        model = User
-        fields = ('id',
-                  'username',
-                  'first_name',
-                  'last_name',
-                  'user_type',
-                  'school',
-                  'committee',
-                  'delegate', )
-        read_only_fields = ('id',
-                            'username',
-                            'user_type',
-                            'committee', )
+	class Meta:
+		model = User
+		fields = ('id',
+				  'username',
+				  'first_name',
+				  'last_name',
+				  'user_type',
+				  'school',
+				  'committee',
+				  'delegate', )
+		read_only_fields = ('id',
+							'username',
+							'user_type',
+							'committee', )
 
-    def update(self, instance, validated_data):
-        if 'school' in validated_data:
-            school_data = validated_data.pop('school')
-            School.objects.filter(id=instance.school.id).update(**school_data)
-            send_mail('{0} has updated its information'.format(instance.school),
-                      'New information for {0}: \n\n'.format(instance.school) \
-                      + 'Advisor: \n' \
-                      + '\n'.join(['{0}: {1}'.format(field, validated_data[field]) for field in validated_data]) \
-                      + '\n\nSchool: \n' \
-                      + '\n'.join(['{0}: {1}'.format(field, school_data[field]) for field in school_data]),
-                      'tech@bmun.org',
-                      ['info@bmun.org'], fail_silently=False)
+	def update(self, instance, validated_data):
+		if 'school' in validated_data:
+			school_data = validated_data.pop('school')
+			School.objects.filter(id=instance.school.id).update(**school_data)
+			send_mail('{0} has updated its information'.format(instance.school),
+					  'New information for {0}: \n\n'.format(instance.school) \
+					  + 'Advisor: \n' \
+					  + '\n'.join(['{0}: {1}'.format(field, validated_data[field]) for field in validated_data]) \
+					  + '\n\nSchool: \n' \
+					  + '\n'.join(['{0}: {1}'.format(field, school_data[field]) for field in school_data]),
+					  'tech@bmun.org',
+					  ['info@bmun.org'], fail_silently=False)
 
-        return super(UserSerializer, self).update(instance, validated_data)
+		return super(UserSerializer, self).update(instance, validated_data)
 
 
 class CreateUserSerializer(ModelSerializer):
-    school = SchoolSerializer(required=False)
+	school = SchoolSerializer(required=False)
 
-    class Meta:
-        model = User
-        fields = ('id', 'username', 'password', 'first_name', 'last_name',
-                  'user_type', 'school', 'email')
-        extra_kwargs = {
-            'password': {'write_only': True},
-            'user_type': {'read_only': True}
-        }
+	class Meta:
+		model = User
+		fields = ('id', 'username', 'password', 'first_name', 'last_name',
+				  'user_type', 'school', 'email')
+		extra_kwargs = {
+			'password': {'write_only': True},
+			'user_type': {'read_only': True}
+		}
 
-    def create(self, validated_data):
-        original_validated_data = validated_data.copy()
+	def to_internal_value(self, data):
+		result = super(CreateUserSerializer, self).to_internal_value(data)
+		print("\n\n\n\n\n")
+		if result.get('fieldname', None) is None:
+			result['fieldname'] = ""
+		return result
 
-        if 'password' in validated_data:
-            del validated_data['password']
+	def create(self, validated_data):
+		original_validated_data = validated_data.copy()
 
-        if validated_data.get('school'):
-            school_data = validated_data.pop('school')
+		if 'password' in validated_data:
+			del validated_data['password']
 
-            school = School.objects.create(**school_data)
-            school.save()
+		if validated_data.get('school'):
+			school_data = validated_data.pop('school')
 
-            user = User.objects.create(
-                school=school, last_login=datetime.now(), **validated_data)
-        else:
-            user = User.objects.create(
-                last_login=datetime.now(), **validated_data)
+			school = School.objects.create(**school_data)
+			school.save()
 
-        if 'password' in original_validated_data:
-            user.set_password(original_validated_data['password'])
-            user.save()
-        if 'school' in original_validated_data:
-            user.user_type = User.TYPE_ADVISOR
-            user.save()
+			user = User.objects.create(
+				school=school, last_login=datetime.now(), **validated_data)
+		else:
+			user = User.objects.create(
+				last_login=datetime.now(), **validated_data)
 
-        return user
+		if 'password' in original_validated_data:
+			user.set_user_password(original_validated_data['password'])
+			user.save()
+		if 'school' in original_validated_data:
+			user.user_type = User.TYPE_ADVISOR
+			user.save()
 
-    def validate_username(self, value):
-        # Django's User model already handles character and uniqueness
-        # validation, so we only worry about length.
-        if len(value) < 5:
-            raise ValidationError('Username must be at least 5 characters.')
+		return user
 
-        return value
+	def validate_username(self, value):
+		# Django's User model already handles character and uniqueness
+		# validation, so we only worry about length.
+		if len(value) < 5:
+			raise ValidationError('Username must be at least 5 characters.')
 
-    def validate_password(self, value):
-        password = value
+		return value
 
-        match = re.match("^[A-Za-z0-9\_\.!@#\$%\^&\*\(\)~\-=\+`\?]+$",
-                         password)
-        if match is None:
-            raise ValidationError('Password contains invalid characters.')
+	def validate_password(self, value):
+		password = value
 
-        if len(password) < 6:
-            raise ValidationError('Password must be at least 6 characters.')
+		if not password:
+			raise ValidationError("This field may not be blank.")
 
-        return value
+		match = re.match("^[A-Za-z0-9\_\.!@#\$%\^&\*\(\)~\-=\+`\?]+$",
+						 password)
+		if match is None:
+			raise ValidationError('Password contains invalid characters.')
 
-    def validate_first_name(self, value):
-        first_name = value
-        validators.nonempty(first_name)
-        return value
+		if len(password) < 6:
+			raise ValidationError('Password must be at least 6 characters.')
 
-    def validate_last_name(self, value):
-        last_name = value
-        validators.nonempty(last_name)
-        return value
+		return value
+
+	def validate_first_name(self, value):
+		first_name = value
+		validators.nonempty(first_name)
+		return value
+
+	def validate_last_name(self, value):
+		last_name = value
+		validators.nonempty(last_name)
+		return value
