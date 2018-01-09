@@ -50,17 +50,3 @@ class PasswordChangeFailed(Exception):
 	@classmethod
 	def incorrect_password(cls):
 		return cls(cls.INCORRECT_PASSWORD)
-
-
-class PasswordCreateFailed(Exception):
-	''' Error when password field is blank '''
-
-	BLANK_FIELD = 'This field may not be blank.'
-
-	def __init__(self, message):
-		super(PasswordCreateFailed, self).__init__(message)
-
-	@classmethod
-	def blank_field(cls):
-		return cls(cls.BLANK_FIELD)
-
